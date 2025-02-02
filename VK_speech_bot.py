@@ -24,7 +24,8 @@ def detect_intent(credentials, text, project_id, session_id):
 
     response = session_client.detect_intent(
         session=session, query_input=query_input)
-    return response.query_result.fulfillment_text
+
+    return response.query_result
 
 
 def handle_vk_message(event, vk, credentials, project_id, session_id):
@@ -34,10 +35,18 @@ def handle_vk_message(event, vk, credentials, project_id, session_id):
     logger.info(f"Новое сообщение от {user_id}: {text}")
 
     try:
-        response_text = detect_intent(
-            credentials, text, project_id, session_id)
-        vk.messages.send(user_id=user_id, message=response_text, random_id=0)
-        logger.info(f"Ответ отправлен пользователю {user_id}: {response_text}")
+        response = detect_intent(credentials, text, project_id, session_id)
+
+        if response.intent.is_fallback:
+            logger.info(f"Бот не понял сообщение от {user_id}. Ответа нет.")
+            return
+
+        vk.messages.send(
+            user_id=user_id, message=response.fulfillment_text, random_id=0
+        )
+        logger.info(
+            f"Ответ отправлен {user_id}: {response.fulfillment_text}"
+        )
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения: {e}")
 
