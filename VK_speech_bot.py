@@ -17,20 +17,20 @@ def get_credentials(google_credentials_path):
 
 def detect_intent(credentials, text, project_id, session_id):
     session_client = dialogflow.SessionsClient(credentials=credentials)
-    session = session_client.session_path(project_id, str(session_id))
+    session = session_client.session_path(project_id, session_id)
 
     text_input = dialogflow.TextInput(text=text, language_code="ru")
     query_input = dialogflow.QueryInput(text=text_input)
 
     response = session_client.detect_intent(
         session=session, query_input=query_input)
-
     return response.query_result
 
 
-def handle_vk_message(event, vk, credentials, project_id, session_id):
+def handle_vk_message(event, vk, credentials, project_id):
     user_id = event.user_id
     text = event.text
+    session_id = f"vk-{user_id}"
 
     logger.info(f"Новое сообщение от {user_id}: {text}")
 
@@ -44,9 +44,7 @@ def handle_vk_message(event, vk, credentials, project_id, session_id):
         vk.messages.send(
             user_id=user_id, message=response.fulfillment_text, random_id=0
         )
-        logger.info(
-            f"Ответ отправлен {user_id}: {response.fulfillment_text}"
-        )
+        logger.info(f"Ответ отправлен {user_id}: {response.fulfillment_text}")
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения: {e}")
 
@@ -57,13 +55,11 @@ def main():
 
     vk_token = env.str("VK_TOKEN")
     project_id = env.str("PROJECT_ID")
-    session_id = env.int("SESSION_ID")
     google_credentials_path = env.str("GOOGLE_APPLICATION_CREDENTIALS")
 
     vk_session = vk_api.VkApi(token=vk_token)
     vk = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
-
     credentials = get_credentials(google_credentials_path)
 
     logger.remove()
@@ -74,7 +70,7 @@ def main():
 
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            handle_vk_message(event, vk, credentials, project_id, session_id)
+            handle_vk_message(event, vk, credentials, project_id)
 
 
 if __name__ == "__main__":

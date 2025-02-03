@@ -8,15 +8,15 @@ from google.oauth2 import service_account
 
 def get_credentials(google_credentials_path):
     credentials = service_account.Credentials.from_service_account_file(
-        google_credentials_path,
-        scopes=["https://www.googleapis.com/auth/dialogflow"]
+        google_credentials_path, scopes=[
+            "https://www.googleapis.com/auth/dialogflow"]
     )
     return credentials
 
 
 def detect_intent(credentials, text, project_id, session_id):
     session_client = dialogflow.SessionsClient(credentials=credentials)
-    session = session_client.session_path(project_id, str(session_id))
+    session = session_client.session_path(project_id, session_id)
 
     text_input = dialogflow.TextInput(text=text, language_code="ru")
     query_input = dialogflow.QueryInput(text=text_input)
@@ -26,8 +26,9 @@ def detect_intent(credentials, text, project_id, session_id):
     return response.query_result.fulfillment_text
 
 
-def handle_message(message, bot, credentials, project_id, session_id):
+def handle_message(message, bot, credentials, project_id):
     chat_id = message.chat.id
+    session_id = f"tg-{chat_id}"
     text = message.text
 
     logger.info(f"Получено сообщение от пользователя с ID: {chat_id}")
@@ -37,9 +38,7 @@ def handle_message(message, bot, credentials, project_id, session_id):
         response_text = detect_intent(
             credentials, text, project_id, session_id)
         bot.send_message(chat_id, response_text)
-        logger.info(
-            f"Отправлено сообщение обратно: {chat_id}: {response_text}"
-        )
+        logger.info(f"Отправлено сообщение обратно:{chat_id}: {response_text}")
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения пользователю: {chat_id}: {e}")
 
@@ -49,7 +48,6 @@ def main():
     env.read_env()
 
     project_id = env.str("PROJECT_ID")
-    session_id = env.int("SESSION_ID")
     google_credentials_path = env.str("GOOGLE_APPLICATION_CREDENTIALS")
     chat_id = env.int("CHAT_ID")
     tg_token = env.str("TG_TOKEN")
@@ -64,8 +62,7 @@ def main():
     try:
         bot.message_handler(func=lambda message: True)(
             lambda message: handle_message(
-                message, bot, credentials, project_id, session_id
-            )
+                message, bot, credentials, project_id)
         )
         bot.send_message(chat_id, "Я готов! Задавайте вопросы!")
         print("Бот успешно запущен!")
